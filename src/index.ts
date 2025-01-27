@@ -1,18 +1,53 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.json`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
-
 export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		return new Response('Hello World!');
-	},
-} satisfies ExportedHandler<Env>;
+	async fetch(request: Request, env: Env): Promise<Response> {
+		const SECRETBOT = env.SECRETBOT;
+		const TOKEN = env.TELEGRAM_BOT_TOKEN;
+		const PATHAPI = "/telegram";
+		const TELEGRAM_API = "https://api.telegram.org/bot" + TOKEN;
+		const url = new URL(request.url);
+		if (url.pathname === PATHAPI) {
+			if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== SECRETBOT) {
+				return new Response("403 Forbidden Error", { status: 403 });
+			}
+			const update: any = await request.json();
+			const message: any = update.message;
+			const text = message.text;
+			const responseText = fixupLink(text);
+			const links = responseText.match(/https?:\/\/\S+/g) || [];
+			console.log("Found links:", links);
+			for (const link of links) {
+				await fetch(
+					TELEGRAM_API + "/sendMessage",
+					{
+						method: "POST",
+						headers: {
+							"content-type": "application/json;charset=UTF-8"
+						},
+						body: JSON.stringify({
+							"chat_id": update.message.chat.id,
+							"text": link
+							// ส่งเฉพาะลิงก์แต่ละลิงก์
+						})
+					}
+				);
+			}
+			return new Response("Ok");
+		}
+		return new Response("Hello World");
+	}
+};
+function fullToHalf(text: string) {
+	return text.normalize("NFKC");
+}
+function fixupLink(text: string) {
+	let cleaned = fullToHalf(text);
+	cleaned = cleaned.replace(/\(\s*com\s*\)/gi, "com");
+	cleaned = cleaned.replace(/(\w+)\s*\.\s*(\w+)/g, "$1.$2");
+	cleaned = cleaned.replace(/(https?:\/\/[^\s]+)/g, " $1 ").trim();
+	cleaned = cleaned.replace(/(https?:\/\/)?(x\.com|twitter\.com)/g, "https://vxtwitter.com");
+	cleaned = cleaned.replace(/(https?:\/\/)?(www\.)?pixiv\.net\/?\s*\n\s*artworks/gi, "https://pixiv.net/artworks");
+	cleaned = cleaned.replace(/@(\w+)/g, "https://twitter.com/$1");
+	cleaned = cleaned.replace(/(https?:\/\/)?discord\s*\.gg/gi, "https://discord.gg");
+	cleaned = cleaned.replace(/(Artist:|Cr\.|linkdiscord:)/gi, "");
+	return cleaned.trim();
+}
