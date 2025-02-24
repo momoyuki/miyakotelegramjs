@@ -13,8 +13,11 @@ export default {
 			const message: any = update.message;
 			const text = message.text;
 			const responseText = fixupLink(text);
+			const responseFixup = fixupX(text);
 			const links = responseText.match(/https?:\/\/\S+/g) || [];
+			const linkx = responseFixup.match(/https?:\/\/\S+/g) || [];
 			console.log("Found links:", links);
+			
 			for (const link of links) {
 				await fetch(
 					TELEGRAM_API + "/sendMessage",
@@ -26,7 +29,22 @@ export default {
 						body: JSON.stringify({
 							"chat_id": update.message.chat.id,
 							"text": link
-							// ส่งเฉพาะลิงก์แต่ละลิงก์
+						})
+					}
+				);
+			}
+
+			for (const link of linkx) {
+				await fetch(
+					TELEGRAM_API + "/sendMessage",
+					{
+						method: "POST",
+						headers: {
+							"content-type": "application/json;charset=UTF-8"
+						},
+						body: JSON.stringify({
+							"chat_id": update.message.chat.id,
+							"text": link
 						})
 					}
 				);
@@ -49,5 +67,11 @@ function fixupLink(text: string) {
 	cleaned = cleaned.replace(/@(\w+)/g, "https://twitter.com/$1");
 	cleaned = cleaned.replace(/(https?:\/\/)?discord\s*\.gg/gi, "https://discord.gg");
 	cleaned = cleaned.replace(/(Artist:|Cr\.|linkdiscord:)/gi, "");
+	return cleaned.trim();
+}
+
+function fixupX(text: string) {
+	let cleaned = fullToHalf(text);
+	cleaned = cleaned.replace(/(https?:\/\/)?(x\.com|twitter\.com)/g, "https://fixupx.com");
 	return cleaned.trim();
 }
