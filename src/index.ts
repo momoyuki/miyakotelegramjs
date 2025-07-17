@@ -10,6 +10,12 @@ export default {
 				return new Response("403 Forbidden Error", { status: 403 });
 			}
 			const update: any = await request.json();
+
+			if (!update.message || !update.message.text) {
+				console.log("No text message found in update.");
+				return new Response("Ok");
+			}
+
 			const message: any = update.message;
 			const text = message.text;
 			const responseText = fixupLink(text);
@@ -17,7 +23,7 @@ export default {
 			const links = responseText.match(/https?:\/\/\S+/g) || [];
 			const linkx = responseFixup.match(/https?:\/\/\S+/g) || [];
 			console.log("Found links:", links);
-			
+
 			for (const link of links) {
 				await fetch(
 					TELEGRAM_API + "/sendMessage",
