@@ -22,9 +22,9 @@ export default {
 			const responseFixup = fixupX(text);
 			const links = responseText.match(/https?:\/\/\S+/g) || [];
 			const linkx = responseFixup.match(/https?:\/\/\S+/g) || [];
-			console.log("Found links:", links);
 
 			for (const link of links) {
+				console.log("Found links:", link);
 				await fetch(
 					TELEGRAM_API + "/sendMessage",
 					{
@@ -41,6 +41,7 @@ export default {
 			}
 
 			for (const link of linkx) {
+				console.log("Found links:", link);
 				await fetch(
 					TELEGRAM_API + "/sendMessage",
 					{
