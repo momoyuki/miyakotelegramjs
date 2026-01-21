@@ -18,8 +18,8 @@ export default {
 
 			const message: any = update.message;
 			const text = message.text;
-			const responseText = fixupLink(text);
-			const responseFixup = fixupX(text);
+			const responseText = repairLinks(text);
+			const responseFixup = convertToFixupX(text);
 			const links = responseText.match(/https?:\/\/\S+/g) || [];
 			const linkx = responseFixup.match(/https?:\/\/\S+/g) || [];
 
@@ -61,11 +61,11 @@ export default {
 		return new Response("Hello World");
 	}
 };
-function fullToHalf(text: string) {
+function normalizeText(text: string) {
 	return text.normalize("NFKC");
 }
-function fixupLink(text: string) {
-	let cleaned = fullToHalf(text);
+function repairLinks(text: string) {
+	let cleaned = normalizeText(text);
 	cleaned = cleaned.replace(/\(\s*com\s*\)/gi, "com");
 	cleaned = cleaned.replace(/(\w+)\s*\.\s*(\w+)/g, "$1.$2");
 	cleaned = cleaned.replace(/(https?:\/\/[^\s]+)/g, " $1 ").trim();
@@ -77,8 +77,8 @@ function fixupLink(text: string) {
 	return cleaned.trim();
 }
 
-function fixupX(text: string) {
-	let cleaned = fullToHalf(text);
+function convertToFixupX(text: string) {
+	let cleaned = normalizeText(text);
 	cleaned = cleaned.replace(/(https?:\/\/)?(x\.com|twitter\.com)/g, "https://fixupx.com");
 	return cleaned.trim();
 }
