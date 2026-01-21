@@ -58,6 +58,12 @@ describe('Bot Logic', () => {
              const result = processMessageText(text);
              expect(result).toContain('https://discord.gg/123');
         });
+
+        it('fixes broken protocol spaces', () => {
+            const text = 'http s://xbep.blogspot.com/2026/01/blog-post_20.html';
+            const result = processMessageText(text);
+            expect(result).toContain('https://xbep.blogspot.com/2026/01/blog-post_20.html');
+        });
         
         it('handles handles', () => {
             const text = 'Follow @user on twitter';

@@ -112,12 +112,15 @@ export function processMessageText(text: string): string[] {
     cleaned = cleaned.replace(/(https?:\/\/)?discord\s*\.gg/gi, "https://discord.gg");
     cleaned = cleaned.replace(/\s+\/\s+/g, "/");
 
-	// Extract potential links and handles
-    const tokens = cleaned.split(/\s+/);
+    // Fix broken protocol spacing globally
+    cleaned = cleaned.replace(/http\s+s\s*:\/\//gi, "https://");
+    cleaned = cleaned.replace(/(https?)\s+:\/\//gi, "$1://");
     
+    // Re-split after global fixes that might have merged tokens
+    const fixedTokens = cleaned.split(/\s+/);
     const urlRegex = /^https?:\/\//i;
 
-    for (const token of tokens) {
+    for (const token of fixedTokens) {
         const fixed = rewriteUrl(token);
         if (fixed) {
             results.push(fixed);
@@ -127,5 +130,9 @@ export function processMessageText(text: string): string[] {
         }
     }
     
+    if (results.length === 0) {
+        console.log(`No links found in message: '${text}' using clean: '${cleaned}'`);
+    }
+
     return [...new Set(results)];
 }
