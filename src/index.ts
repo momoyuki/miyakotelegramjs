@@ -66,6 +66,7 @@ function normalizeText(text: string) {
 }
 function repairLinks(text: string) {
 	let cleaned = normalizeText(text);
+	cleaned = cleaned.replace(/\(\s*\.\s*\)/g, ".");
 	cleaned = cleaned.replace(/\(\s*com\s*\)/gi, "com");
 	cleaned = cleaned.replace(/(\w+)\s*\.\s*(\w+)/g, "$1.$2");
 	cleaned = cleaned.replace(/(https?:\/\/[^\s]+)/g, " $1 ").trim();
@@ -79,6 +80,7 @@ function repairLinks(text: string) {
 
 function convertToFixupX(text: string) {
 	let cleaned = normalizeText(text);
+	cleaned = cleaned.replace(/\(\s*\.\s*\)/g, ".");
 	cleaned = cleaned.replace(/(https?:\/\/)?(x\.com|twitter\.com)/g, "https://fixupx.com");
 	return cleaned.trim();
 }
