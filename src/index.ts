@@ -33,7 +33,20 @@ export default {
 				await Promise.all(processedLinks.map(link =>
 					sendMessage(TELEGRAM_API, chatId, link)
 				));
-			}
+			} else {
+                if (env.OWNER_ID) {
+                    await sendMessage(TELEGRAM_API, env.OWNER_ID, `Unprocessed message from chat ${chatId}:\n\n${text}`);
+                }
+
+                if (env.UNPROCESSED_KV) {
+                    const key = `${Date.now()}-${chatId}`;
+                    await env.UNPROCESSED_KV.put(key, JSON.stringify({
+                        chatId,
+                        text,
+                        timestamp: Date.now()
+                    }));
+                }
+            }
 
 			return new Response("Ok");
 		}

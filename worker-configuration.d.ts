@@ -3,4 +3,6 @@
 interface Env {
     SECRETBOT: string;
     TELEGRAM_BOT_TOKEN: string;
+    OWNER_ID?: string;
+    UNPROCESSED_KV?: KVNamespace;
 }
