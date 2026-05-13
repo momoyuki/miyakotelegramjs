@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeText, processMessageText, rewriteUrl } from '../src/index';
+import { normalizeText, repairLinks, convertToFixupX } from '../src/index';
 
 describe('Bot Logic', () => {
     describe('normalizeText', () => {
@@ -8,67 +8,63 @@ describe('Bot Logic', () => {
         });
     });
 
-    describe('rewriteUrl', () => {
+    describe('repairLinks', () => {
         it('fixes Twitter/X links', () => {
-            expect(rewriteUrl('https://x.com/user/status/123')).toBe('https://vxtwitter.com/user/status/123');
-            expect(rewriteUrl('https://twitter.com/user/status/123')).toBe('https://vxtwitter.com/user/status/123');
+            expect(repairLinks('https://x.com/user/status/123')).toBe('https://vxtwitter.com/user/status/123');
+            expect(repairLinks('https://twitter.com/user/status/123')).toBe('https://vxtwitter.com/user/status/123');
         });
 
-        it('fixes Instagram links', () => {
-            expect(rewriteUrl('https://instagram.com/p/123')).toBe('https://ddinstagram.com/p/123');
-            expect(rewriteUrl('https://www.instagram.com/reel/123')).toBe('https://ddinstagram.com/reel/123');
+        it('fixes protocol spaces', () => {
+            const cases = [
+                'http s://example.com',
+                'https :/ /example.com',
+                'h ttps://example.com',
+                'ht tps://example.com',
+                'htt ps://example.com',
+                'https ://example.com'
+            ];
+            cases.forEach(c => {
+                expect(repairLinks(c)).toBe('https://example.com');
+            });
+            expect(repairLinks('h ttp://example.com')).toBe('http://example.com');
         });
 
-        it('fixes TikTok links', () => {
-            expect(rewriteUrl('https://tiktok.com/@user/video/123')).toBe('https://vxtiktok.com/@user/video/123');
+        it('fixes incomplete protocols', () => {
+            expect(repairLinks('http example.com')).toBe('http://example.com');
+            expect(repairLinks('https google.com')).toBe('https://google.com');
+            expect(repairLinks('://twitter.com')).toBe('https://vxtwitter.com');
+            expect(repairLinks('//pixiv.net')).toBe('https://pixiv.net');
+            expect(repairLinks('h ttp s google.com')).toBe('https://google.com');
         });
 
-         it('fixes Reddit links', () => {
-            expect(rewriteUrl('https://reddit.com/r/pics/123')).toBe('https://rxddit.com/r/pics/123');
+        it('does not fix protocol-like strings that are not followed by a domain', () => {
+             // If there's no domain-like structure after, it shouldn't aggressively fix it
+             expect(repairLinks('http just some text')).toBe('http just some text');
+             expect(repairLinks('://')).toBe('://');
         });
 
         it('fixes Pixiv links', () => {
-            expect(rewriteUrl('https://pixiv.net/artworks/123')).toBe('https://pixiv.net/artworks/123');
+             // Note: current regex for pixiv is specific to artworks and newline
+             const text = 'https://pixiv.net/\nartworks/123';
+             expect(repairLinks(text)).toBe('https://pixiv.net/artworks/123');
         });
 
         it('fixes Discord links', () => {
-            expect(rewriteUrl('discord.gg/invite')).toBe('https://discord.gg/invite');
+            expect(repairLinks('discord . gg/invite')).toBe('https://discord.gg/invite');
         });
         
         it('converts handles to twitter links', () => {
-            expect(rewriteUrl('@elonmusk')).toBe('https://twitter.com/elonmusk');
-        });
-        
-        it('ignores other links', () => {
-            expect(rewriteUrl('https://google.com')).toBe(null);
+            expect(repairLinks('@elonmusk')).toBe('https://twitter.com/elonmusk');
         });
     });
-    
-    describe('processMessageText', () => {
-        it('extracts and fixes multiple links', () => {
-            const text = 'Check this https://x.com/123 and this https://instagram.com/abc';
-            const result = processMessageText(text);
-            expect(result).toHaveLength(2);
-            expect(result).toContain('https://vxtwitter.com/123');
-            expect(result).toContain('https://ddinstagram.com/abc');
-        });
 
-        it('handles messily formatted links', () => {
-             const text = 'linkdiscord: discord . gg / 123';
-             const result = processMessageText(text);
-             expect(result).toContain('https://discord.gg/123');
-        });
-
-        it('fixes broken protocol spaces', () => {
-            const text = 'http s://xbep.blogspot.com/2026/01/blog-post_20.html';
-            const result = processMessageText(text);
-            expect(result).toContain('https://xbep.blogspot.com/2026/01/blog-post_20.html');
+    describe('convertToFixupX', () => {
+        it('converts to fixupx', () => {
+             expect(convertToFixupX('https://x.com/user')).toBe('https://fixupx.com/user');
         });
         
-        it('handles handles', () => {
-            const text = 'Follow @user on twitter';
-            const results = processMessageText(text);
-            expect(results).toContain('https://twitter.com/user');
+        it('handles protocol spaces in fixupx', () => {
+             expect(convertToFixupX('h ttps://x.com/user')).toBe('https://fixupx.com/user');
         });
     });
 });
