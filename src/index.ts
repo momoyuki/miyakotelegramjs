@@ -16,7 +16,7 @@ export default {
 				return new Response("Bad Request", { status: 400 });
 			}
 
-			if (!update.message || !update.message.text) {
+			if (!update || !update.message || !update.message.text) {
 				console.log("No text message found in update.");
 				return new Response("Ok");
 			}
@@ -25,13 +25,16 @@ export default {
 			const text = message.text;
 			const responseText = repairLinks(text);
 			const responseFixup = convertToFixupX(text);
-			const links = responseText.match(/https?:\/\/\S+/g) || [];
-			const linkx = responseFixup.match(/https?:\/\/\S+/g) || [];
+			const links = Array.from(new Set(responseText.match(/https?:\/\/\S+/g) || []));
+			const linkx = Array.from(new Set(responseFixup.match(/https?:\/\/\S+/g) || []))
+				.filter(link => link.includes("fixupx.com"));
 
 			const fetchPromises = [];
+			const fetchContexts = [];
 
 			for (const link of links) {
 				console.log("Found link:", link);
+				fetchContexts.push(link);
 				fetchPromises.push(
 					fetch(TELEGRAM_API + "/sendMessage", {
 						method: "POST",
@@ -48,6 +51,7 @@ export default {
 
 			for (const link of linkx) {
 				console.log("Found link:", link);
+				fetchContexts.push(link);
 				fetchPromises.push(
 					fetch(TELEGRAM_API + "/sendMessage", {
 						method: "POST",
@@ -62,7 +66,13 @@ export default {
 				);
 			}
 
-			await Promise.all(fetchPromises);
+			const results = await Promise.allSettled(fetchPromises);
+			results.forEach((result, index) => {
+				if (result.status === "rejected") {
+					console.error(`Message send failed for link: ${fetchContexts[index]} in chat: ${update.message.chat.id}`, result.reason);
+				}
+			});
+			
 			return new Response("Ok");
 		}
 		return new Response("Hello World!");
@@ -75,10 +85,12 @@ export function normalizeText(text: string) {
 function performCommonRepairs(text: string): string {
 	let cleaned = normalizeText(text);
 
+	// Normalize noisy punctuation (e.g., "( . )" -> ".", "ex . com" -> "ex.com")
 	cleaned = cleaned.replace(/\(\s*\.\s*\)/g, ".");
 	cleaned = cleaned.replace(/\(\s*com\s*\)/gi, "com");
 	cleaned = cleaned.replace(/(\w+)\s*\.\s*(\w+)/g, "$1.$2");
 
+	// Reconstruct obfuscated "http(s)" and append domain (e.g., "h t t p : / / ex.com" -> "http://ex.com"). Defaults to https://.
 	cleaned = cleaned.replace(/((?:h\s*t\s*t\s*p(?:\s*s)?|:\s*\/\s*\/+|\/\s*\/+)[^a-z0-9]*)([a-z0-9-.\(\)]+\.[a-z]{2,}[^\s]*)/gi, (match, pPart, dPart) => {
 		const lowP = pPart.toLowerCase();
 		let protocol = "https://";
@@ -87,6 +99,8 @@ function performCommonRepairs(text: string): string {
 		}
 		return protocol + dPart;
 	});
+	
+	// Normalize duplicated/spaced slashes in valid protocols (e.g., "https : // ex.com" -> "https://ex.com")
 	cleaned = cleaned.replace(/(https?)\s*:\s*\/\s*\/+/gi, "$1://");
 
 	return cleaned;
