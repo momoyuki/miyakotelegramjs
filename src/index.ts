@@ -64,16 +64,16 @@ export default {
 export function normalizeText(text: string) {
 	return text.normalize("NFKC");
 }
-export function repairLinks(text: string) {
+
+function performCommonRepairs(text: string): string {
 	let cleaned = normalizeText(text);
-	
-	// 1. Clean domain parts first to make detection easier
+
+	// 1. Clean domain parts
 	cleaned = cleaned.replace(/\(\s*\.\s*\)/g, ".");
 	cleaned = cleaned.replace(/\(\s*com\s*\)/gi, "com");
 	cleaned = cleaned.replace(/(\w+)\s*\.\s*(\w+)/g, "$1.$2");
 
-	// 2. Fix incomplete or broken protocols
-	// Matches broken protocol markers + noise, followed by a domain pattern
+	// 2. Fix protocols (broken, incomplete, or with spaces)
 	cleaned = cleaned.replace(/((?:h\s*t\s*t\s*p(?:\s*s)?|:\s*\/\s*\/+|\/\s*\/+)[^a-z0-9]*)([a-z0-9-.\s\(\)]+\.[a-z]{2,}[^\s]*)/gi, (match, pPart, dPart) => {
 		const lowP = pPart.toLowerCase();
 		let protocol = "https://";
@@ -82,9 +82,13 @@ export function repairLinks(text: string) {
 		}
 		return protocol + dPart;
 	});
-
-	// 3. Fix internal spaces in already recognized protocols
 	cleaned = cleaned.replace(/(https?)\s*:\s*\/\s*\/+/gi, "$1://");
+
+	return cleaned;
+}
+
+export function repairLinks(text: string) {
+	let cleaned = performCommonRepairs(text);
 
 	cleaned = cleaned.replace(/(https?:\/\/[^\s]+)/g, " $1 ").trim();
 	cleaned = cleaned.replace(/(https?:\/\/)?(x\.com|twitter\.com)/g, "https://vxtwitter.com");
@@ -96,23 +100,7 @@ export function repairLinks(text: string) {
 }
 
 export function convertToFixupX(text: string) {
-	let cleaned = normalizeText(text);
-
-	// Clean domain parts
-	cleaned = cleaned.replace(/\(\s*\.\s*\)/g, ".");
-	cleaned = cleaned.replace(/(\w+)\s*\.\s*(\w+)/g, "$1.$2");
-
-	// Fix protocols
-	cleaned = cleaned.replace(/((?:h\s*t\s*t\s*p(?:\s*s)?|:\s*\/\s*\/+|\/\s*\/+)[^a-z0-9]*)([a-z0-9-.\s\(\)]+\.[a-z]{2,}[^\s]*)/gi, (match, pPart, dPart) => {
-		const lowP = pPart.toLowerCase();
-		let protocol = "https://";
-		if (/h\s*t\s*t\s*p/i.test(lowP)) {
-			protocol = /s/i.test(lowP) ? "https://" : "http://";
-		}
-		return protocol + dPart;
-	});
-	cleaned = cleaned.replace(/(https?)\s*:\s*\/\s*\/+/gi, "$1://");
-
+	let cleaned = performCommonRepairs(text);
 	cleaned = cleaned.replace(/(https?:\/\/)?(x\.com|twitter\.com)/g, "https://fixupx.com");
 	return cleaned.trim();
 }
