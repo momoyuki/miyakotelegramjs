@@ -71,6 +71,14 @@ describe('Bot Logic', () => {
         it('does not swallow trailing punctuation into a domain-less status reference', () => {
             expect(repairLinks('(X) elonmusk/status/123)')).toBe('https://vxtwitter.com/elonmusk/status/123)');
         });
+
+        it('does not treat a hyphenated slug as a domain-less status reference', () => {
+            expect(repairLinks('feature-branch/status/123')).toBe('feature-branch/status/123');
+        });
+
+        it('lets the @handle converter own an @mention status reference', () => {
+            expect(repairLinks('@elonmusk/status/123')).toBe('https://twitter.com/elonmusk/status/123');
+        });
     });
 
     describe('convertToFixupX', () => {
