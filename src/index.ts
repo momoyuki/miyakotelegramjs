@@ -103,6 +103,11 @@ function performCommonRepairs(text: string): string {
 	// Normalize duplicated/spaced slashes in valid protocols (e.g., "https : // ex.com" -> "https://ex.com")
 	cleaned = cleaned.replace(/(https?)\s*:\s*\/\s*\/+/gi, "$1://");
 
+	// Handle domain-less X/Twitter status references (e.g., "(X) /user/status/123", "(X) user/status/123", or bare "user/status/123") -> full x.com URL.
+	// The negative lookbehind keeps this from re-matching the tail of a URL that's already complete.
+	// The trailing char class excludes closing brackets/sentence punctuation so surrounding text (e.g. a parenthetical) isn't swallowed into the URL.
+	cleaned = cleaned.replace(/(?<![\w./:@-])(?:\(\s*[xX]\s*\)\s*)?\/?(\w+\/status\/\d+[^\s)\]},.!?;:'"]*)/g, "https://x.com/$1");
+
 	return cleaned;
 }
 

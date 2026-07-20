@@ -56,15 +56,49 @@ describe('Bot Logic', () => {
         it('converts handles to twitter links', () => {
             expect(repairLinks('@elonmusk')).toBe('https://twitter.com/elonmusk');
         });
+
+        it('fixes domain-less X/Twitter status references', () => {
+            expect(repairLinks('(X) /elonmusk/status/123')).toBe('https://vxtwitter.com/elonmusk/status/123');
+            expect(repairLinks('(X) elonmusk/status/123')).toBe('https://vxtwitter.com/elonmusk/status/123');
+            expect(repairLinks('(x) elonmusk/status/123')).toBe('https://vxtwitter.com/elonmusk/status/123');
+            expect(repairLinks('elonmusk/status/123')).toBe('https://vxtwitter.com/elonmusk/status/123');
+        });
+
+        it('does not re-mangle an already-complete status URL', () => {
+            expect(repairLinks('https://twitter.com/user/status/123')).toBe('https://vxtwitter.com/user/status/123');
+        });
+
+        it('does not swallow trailing punctuation into a domain-less status reference', () => {
+            expect(repairLinks('(X) elonmusk/status/123)')).toBe('https://vxtwitter.com/elonmusk/status/123)');
+        });
+
+        it('does not treat a hyphenated slug as a domain-less status reference', () => {
+            expect(repairLinks('feature-branch/status/123')).toBe('feature-branch/status/123');
+        });
+
+        it('lets the @handle converter own an @mention status reference', () => {
+            expect(repairLinks('@elonmusk/status/123')).toBe('https://twitter.com/elonmusk/status/123');
+        });
     });
 
     describe('convertToFixupX', () => {
         it('converts to fixupx', () => {
              expect(convertToFixupX('https://x.com/user')).toBe('https://fixupx.com/user');
         });
-        
+
         it('handles protocol spaces in fixupx', () => {
              expect(convertToFixupX('h ttps://x.com/user')).toBe('https://fixupx.com/user');
+        });
+
+        it('fixes domain-less X/Twitter status references', () => {
+            expect(convertToFixupX('(X) /elonmusk/status/123')).toBe('https://fixupx.com/elonmusk/status/123');
+            expect(convertToFixupX('(X) elonmusk/status/123')).toBe('https://fixupx.com/elonmusk/status/123');
+            expect(convertToFixupX('(x) elonmusk/status/123')).toBe('https://fixupx.com/elonmusk/status/123');
+            expect(convertToFixupX('elonmusk/status/123')).toBe('https://fixupx.com/elonmusk/status/123');
+        });
+
+        it('does not re-mangle an already-complete status URL', () => {
+            expect(convertToFixupX('https://twitter.com/user/status/123')).toBe('https://fixupx.com/user/status/123');
         });
     });
 });
